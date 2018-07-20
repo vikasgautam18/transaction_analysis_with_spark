@@ -28,18 +28,37 @@ object TransactionAnalysis {
 
     val inputRDD: RDD[String] = sparkContext.textFile(Utils.getString(TA_INPUT_FILE_PATH))
 
-    val tupleRDD: RDD[(String, Int)] = ExtractTrasactionFromInput(inputRDD)
+    val tupleRDD: RDD[(String, Int)] = ExtractTrasactionFromInput(inputRDD, rdd => {
+      rdd.map(s => {
+        val arr = s.split(",")
+        (arr(5), arr(6).toInt)
+      })
+    })
 
     // group by age and find average of transaction per age group
-    val resultRDD: RDD[(String, Int)] = FindAverageTransactionPerAgeGroup(tupleRDD)
+    val resultRDD: RDD[(String, Int)] = FindAverageTransactionPerGroup(tupleRDD)
 
     // print the results
     println("the average transactions per age group is ::: ")
     resultRDD.collect().sortBy(_._2).foreach(println)
 
+
+    val genderRDD: RDD[(String, Int)] = ExtractTrasactionFromInput(inputRDD, rdd => {
+      rdd.map(s => {
+        val arr = s.split(",")
+        (arr(4), arr(6).toInt)
+      })
+    })
+
+    val transactionByGender: RDD[(String, Int)] = FindAverageTransactionPerGroup(genderRDD)
+
+    // print the results
+    println("the average transactions per gender group is ::: ")
+    transactionByGender.collect().sortBy(_._2).foreach(println)
+
   }
 
-  def FindAverageTransactionPerAgeGroup(tupleRDD: RDD[(String, Int)]) = {
+  def FindAverageTransactionPerGroup(tupleRDD: RDD[(String, Int)]) = {
     val groupedRDD: RDD[(String, Iterable[Int])] = tupleRDD.groupByKey()
     val resultRDD: RDD[(String, Int)] = groupedRDD.mapValues(iter => {
       iter.reduce(_ + _) / iter.toList.length
@@ -47,21 +66,17 @@ object TransactionAnalysis {
     resultRDD
   }
 
-  def ExtractTrasactionFromInput(inputRDD: RDD[String]) = {
+  def ExtractTrasactionFromInput(inputRDD: RDD[String], f: RDD[String] => RDD[(String, Int)]) = {
 
     //remove header
     val header = inputRDD.first()
-    val transactionRDD = inputRDD.filter(row => row != header)
+    val transactionRDD: RDD[String] = inputRDD.filter(row => row != header)
 
     //debugging
     println("Input sample as read from source file ::: ")
     transactionRDD.take(10).foreach(println)
 
     // get rid of unwanted columns in the dataset
-    val tupleRDD: RDD[(String, Int)] = transactionRDD.map(s => {
-      val arr = s.split(",")
-      (arr(5), arr(6).toInt)
-    })
-    tupleRDD
+    f(transactionRDD)
   }
 }
