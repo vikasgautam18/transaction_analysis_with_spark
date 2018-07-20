@@ -27,11 +27,33 @@ object TransactionAnalysis {
     //read input data into RDD
 
     val inputRDD: RDD[String] = sparkContext.textFile(Utils.getString(TA_INPUT_FILE_PATH))
-    val header = inputRDD.first()
 
-    // remove header
+    val tupleRDD: RDD[(String, Int)] = ExtractTrasactionFromInput(inputRDD)
+
+    // group by age and find average of transaction per age group
+    val resultRDD: RDD[(String, Int)] = FindAverageTransactionPerAgeGroup(tupleRDD)
+
+    // print the results
+    println("the average transactions per age group is ::: ")
+    resultRDD.collect().sortBy(_._2).foreach(println)
+
+  }
+
+  def FindAverageTransactionPerAgeGroup(tupleRDD: RDD[(String, Int)]) = {
+    val groupedRDD: RDD[(String, Iterable[Int])] = tupleRDD.groupByKey()
+    val resultRDD: RDD[(String, Int)] = groupedRDD.mapValues(iter => {
+      iter.reduce(_ + _) / iter.toList.length
+    })
+    resultRDD
+  }
+
+  def ExtractTrasactionFromInput(inputRDD: RDD[String]) = {
+
+    //remove header
+    val header = inputRDD.first()
     val transactionRDD = inputRDD.filter(row => row != header)
 
+    //debugging
     println("Input sample as read from source file ::: ")
     transactionRDD.take(10).foreach(println)
 
@@ -40,17 +62,6 @@ object TransactionAnalysis {
       val arr = s.split(",")
       (arr(5), arr(6).toInt)
     })
-
-    // group by age and find average of transaction per age group
-    val groupedRDD: RDD[(String, Iterable[Int])] = tupleRDD.groupByKey()
-    val resultRDD: RDD[(String, Int)] = groupedRDD.mapValues(iter => {
-      iter.reduce(_ + _)/iter.toList.length
-    })
-
-
-    // print the results
-    println("the average transactions per age group is ::: ")
-    resultRDD.collect().sortBy(_._1).foreach(println)
-
+    tupleRDD
   }
 }
