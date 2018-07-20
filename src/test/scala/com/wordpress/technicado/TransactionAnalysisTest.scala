@@ -16,7 +16,7 @@ class TransactionAnalysisTest extends FunSpec with BeforeAndAfterAll {
     sparkConf = new SparkConf
     sparkConf.setMaster("local")
     sparkConf.setAppName("TransactionAnalysis_reduceByKeyTest")
-    sparkContext = new SparkContext(sparkConf)
+    sparkContext = SparkContext.getOrCreate(sparkConf)
 
     inputRDD = sparkContext.parallelize(Seq("id,first_name,last_name,email,gender,age,transactions",
       "1,Albina,Hamal,ahamal0@yandex.ru,Female,39,14",
